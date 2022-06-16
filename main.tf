@@ -1,7 +1,6 @@
 terraform {
-   cloud {
-    organization = "anondobazar-online"
-
+  cloud {
+    organization = "princebillygk"
     workspaces {
       name = "MyPortfolio"
     }
