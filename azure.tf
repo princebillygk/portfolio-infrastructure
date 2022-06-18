@@ -54,12 +54,13 @@ resource "azurerm_linux_web_app" "princebillygk-portfolio" {
   site_config {
     always_on = false
     application_stack {
-      docker_image = "princebillygk/my-portfolio-backend:latest"
+      docker_image = "princebillygk/portfolio-backend:latest"
       docker_image_tag = "latest"
     }
   }
   app_settings = {
     DOCKER_REGISTRY_SERVER_URL = "https://ghcr.io"
+    # PORT = 80
+    # WEBSITES_PORTS = 80
   }
 }
-
