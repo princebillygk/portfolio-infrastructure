@@ -35,9 +35,7 @@ resource "azurerm_virtual_network" "MyPortfolioVnet" {
   address_space       = ["10.0.0.0/16"]
   dns_servers         = ["10.0.0.4", "10.0.0.5"]
 
-  tags = {
-    environment = "Production"
-  }
+  tags = local.common_tags
 }
 
 resource "azurerm_subnet" "MyPortfolioSubnet1" {
@@ -69,8 +67,8 @@ resource "azurerm_cosmosdb_account" "princebillygk-portfolio-mongodb" {
   offer_type                        = "Standard"
   kind                              = "MongoDB"
   enable_free_tier                  = true
-  is_virtual_network_filter_enabled = true
   ip_range_filter                   = join(",", local.cosmodb_allowed_ip)
+  is_virtual_network_filter_enabled = true
   capacity {
     total_throughput_limit = 1000
   }
@@ -110,6 +108,7 @@ resource "azurerm_linux_web_app" "MyPortfolioApp" {
   resource_group_name = azurerm_resource_group.MyPortfolioRg.name
   location            = azurerm_resource_group.MyPortfolioRg.location
   service_plan_id     = azurerm_service_plan.MyPortfolioAppPlan.id
+  tags = local.common_tags
   site_config {
     always_on = false
     application_stack {
@@ -117,6 +116,7 @@ resource "azurerm_linux_web_app" "MyPortfolioApp" {
       docker_image_tag = "latest"
     }
   }
+
   app_settings = {
     DOCKER_REGISTRY_SERVER_URL      = "https://ghcr.io"
     DOCKER_REGISTRY_SERVER_USERNAME = var.docker_env.username
@@ -127,7 +127,7 @@ resource "azurerm_linux_web_app" "MyPortfolioApp" {
   }
 }
 
-resource "azurerm_app_service_virtual_network_swift_connection" "PortfolioVnetIntegration" {
-  app_service_id = azurerm_linux_web_app.MyPortfolioApp.id
-  subnet_id      = azurerm_subnet.MyPortfolioSubnet1.id
-}
+# resource "azurerm_app_service_virtual_network_swift_connection" "PortfolioVnetIntegration" {
+#   app_service_id = azurerm_linux_web_app.MyPortfolioApp.id
+#   subnet_id      = azurerm_subnet.MyPortfolioSubnet1.id
+# }
