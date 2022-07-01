@@ -28,6 +28,38 @@ locals {
   ]
 }
 
+resource "azurerm_virtual_network" "MyPortfolioVnet" {
+  name                = "MyPortfolioVnet"
+  location            = azurerm_resource_group.MyPortfolioRg.location
+  resource_group_name = azurerm_resource_group.MyPortfolioRg.name
+  address_space       = ["10.0.0.0/16"]
+  dns_servers         = ["10.0.0.4", "10.0.0.5"]
+
+  tags = {
+    environment = "Production"
+  }
+}
+
+resource "azurerm_subnet" "MyPortfolioSubnet1" {
+  name                 = "MyPortfolioSubnet1"
+  resource_group_name  = azurerm_resource_group.MyPortfolioRg.name
+  virtual_network_name = azurerm_virtual_network.MyPortfolioVnet.name
+  address_prefixes     = ["10.0.1.0/24"]
+
+  service_endpoints = [
+    "Microsoft.AzureCosmosDB"
+  ]
+
+  delegation {
+    name = "serverFarms-delegation"
+
+    service_delegation {
+      name    = "Microsoft.Web/serverFarms"
+      actions = ["Microsoft.Network/virtualNetworks/subnets/action"]
+    }
+  }
+}
+
 
 resource "azurerm_cosmosdb_account" "princebillygk-portfolio-mongodb" {
   name                              = "princebillygk-portfolio-mongodb"
@@ -42,7 +74,9 @@ resource "azurerm_cosmosdb_account" "princebillygk-portfolio-mongodb" {
   capacity {
     total_throughput_limit = 1000
   }
-
+  virtual_network_rule {
+    id = azurerm_subnet.MyPortfolioSubnet1.id
+  }
   consistency_policy {
     consistency_level = "Eventual"
   }
@@ -52,6 +86,7 @@ resource "azurerm_cosmosdb_account" "princebillygk-portfolio-mongodb" {
     failover_priority = 0
   }
 }
+
 
 output "mongodb_endpoint" {
   value = azurerm_cosmosdb_account.princebillygk-portfolio-mongodb.endpoint
@@ -70,7 +105,7 @@ resource "azurerm_service_plan" "MyPortfolioAppPlan" {
   tags                = local.common_tags
 }
 
-resource "azurerm_linux_web_app" "princebillygk-portfolio" {
+resource "azurerm_linux_web_app" "MyPortfolioApp" {
   name                = "princebillygk"
   resource_group_name = azurerm_resource_group.MyPortfolioRg.name
   location            = azurerm_resource_group.MyPortfolioRg.location
@@ -83,12 +118,16 @@ resource "azurerm_linux_web_app" "princebillygk-portfolio" {
     }
   }
   app_settings = {
-    DOCKER_REGISTRY_SERVER_URL = "https://ghcr.io"
+    DOCKER_REGISTRY_SERVER_URL      = "https://ghcr.io"
     DOCKER_REGISTRY_SERVER_USERNAME = var.docker_env.username
     DOCKER_REGISTRY_SERVER_PASSWORD = var.docker_env.password
 
-    MONGODB_URI = var.app_env.mongodb_uri
+    MONGODB_URI   = var.app_env.mongodb_uri
     RESUME_OBJ_ID = var.app_env.resume_obj_id
   }
 }
 
+resource "azurerm_app_service_virtual_network_swift_connection" "PortfolioVnetIntegration" {
+  app_service_id = azurerm_linux_web_app.MyPortfolioApp.id
+  subnet_id      = azurerm_subnet.MyPortfolioSubnet1.id
+}
