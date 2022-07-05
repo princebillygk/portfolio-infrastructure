@@ -12,51 +12,22 @@ resource "azurerm_resource_group" "MyPortfolioRg" {
   tags     = local.common_tags
 }
 
-locals {
-  cosmodb_allowed_ip = [
-    // My current ip
-    "${var.admin_ip}/32",
-    # Azure portal ip address
-    "51.4.229.218/32",
-    "52.244.48.71/32",
-    "52.244.48.71/32",
-    "104.42.195.92/32",
-    "40.76.54.131/32",
-    "52.176.6.30/32",
-    "52.169.50.45/32",
-    "52.187.184.26/32"
-  ]
-}
+# locals {
+#   cosmodb_allowed_ip = [
+#     // My current ip
+#     "${var.admin_ip}/32",
+#     # Azure portal ip address
+#     "51.4.229.218/32",
+#     "52.244.48.71/32",
+#     "52.244.48.71/32",
+#     "104.42.195.92/32",
+#     "40.76.54.131/32",
+#     "52.176.6.30/32",
+#     "52.169.50.45/32",
+#     "52.187.184.26/32"
+#   ]
+# }
 
-resource "azurerm_virtual_network" "MyPortfolioVnet" {
-  name                = "MyPortfolioVnet"
-  location            = azurerm_resource_group.MyPortfolioRg.location
-  resource_group_name = azurerm_resource_group.MyPortfolioRg.name
-  address_space       = ["10.0.0.0/16"]
-  dns_servers         = ["10.0.0.4", "10.0.0.5"]
-
-  tags = local.common_tags
-}
-
-resource "azurerm_subnet" "MyPortfolioSubnet1" {
-  name                 = "MyPortfolioSubnet1"
-  resource_group_name  = azurerm_resource_group.MyPortfolioRg.name
-  virtual_network_name = azurerm_virtual_network.MyPortfolioVnet.name
-  address_prefixes     = ["10.0.1.0/24"]
-
-  service_endpoints = [
-    "Microsoft.AzureCosmosDB"
-  ]
-
-  delegation {
-    name = "serverFarms-delegation"
-
-    service_delegation {
-      name    = "Microsoft.Web/serverFarms"
-      actions = ["Microsoft.Network/virtualNetworks/subnets/action"]
-    }
-  }
-}
 
 
 resource "azurerm_cosmosdb_account" "princebillygk-portfolio-mongodb" {
@@ -67,13 +38,10 @@ resource "azurerm_cosmosdb_account" "princebillygk-portfolio-mongodb" {
   offer_type                        = "Standard"
   kind                              = "MongoDB"
   enable_free_tier                  = true
-  ip_range_filter                   = join(",", local.cosmodb_allowed_ip)
-  is_virtual_network_filter_enabled = true
+  # ip_range_filter                   = join(",", local.cosmodb_allowed_ip)
+   // currently allowing all ip
   capacity {
     total_throughput_limit = 1000
-  }
-  virtual_network_rule {
-    id = azurerm_subnet.MyPortfolioSubnet1.id
   }
   consistency_policy {
     consistency_level = "Eventual"
@@ -103,6 +71,7 @@ resource "azurerm_service_plan" "MyPortfolioAppPlan" {
   tags                = local.common_tags
 }
 
+# Live Application for the portfolio
 resource "azurerm_linux_web_app" "MyPortfolioApp" {
   name                = "princebillygk"
   resource_group_name = azurerm_resource_group.MyPortfolioRg.name
@@ -127,7 +96,3 @@ resource "azurerm_linux_web_app" "MyPortfolioApp" {
   }
 }
 
-# resource "azurerm_app_service_virtual_network_swift_connection" "PortfolioVnetIntegration" {
-#   app_service_id = azurerm_linux_web_app.MyPortfolioApp.id
-#   subnet_id      = azurerm_subnet.MyPortfolioSubnet1.id
-# }
